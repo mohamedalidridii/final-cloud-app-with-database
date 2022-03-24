@@ -64,7 +64,7 @@ class Course(models.Model):
     is_enrolled = False
 
     def __str__(self):
-        return "Name: " + self.name + "," + \
+        return "Name: " + self.name + ",\n" + \
                "Description: " + self.description
 
 
@@ -74,6 +74,11 @@ class Lesson(models.Model):
     order = models.IntegerField(default=0)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     content = models.TextField()
+
+    def __str__(self):
+        return f"Title: {self.title} |\t Course: {self.course.name}"
+
+    
 
 
 # Enrollment model
@@ -101,10 +106,33 @@ class Enrollment(models.Model):
     # Has a grade point for each question
     # Has question content
     # Other fields and methods you would like to design
-#class Question(models.Model):
+
+class Question(models.Model):
+    
     # Foreign key to lesson
     # question text
     # question grade/mark
+
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    question_text = models.CharField(
+        max_length=256,
+        null=False,
+        blank=False,
+        default="Question"
+    )
+    grade = models.IntegerField(
+        null=False,
+        blank=False,
+        default=1
+    )
+
+    def __str__(self):
+        return "Lesson: {}, Question: {}, Grade: {}".format(
+            self.lesson.pk,
+            self.question_text,
+            self.grade
+        )
+    
 
     # <HINT> A sample model method to calculate if learner get the score of the question
     #def is_get_score(self, selected_ids):
@@ -114,6 +142,21 @@ class Enrollment(models.Model):
     #        return True
     #    else:
     #        return False
+    def get_score(self, selected):
+        choices = self.choice_set.all()
+        selected_count = selected.filter(question__id=self.id,is_correct=True).count()
+        total_items = choices.count()
+        correct = 0
+        if selected_count > 0:
+            for choice in choices:
+                if choice.is_correct == True and choice in selected:
+                    correct += 1
+                elif choice.is_correct == False and choice not in selected:
+                    correct += 1
+        percentage = correct / total_items
+        points = percentage * self.grade
+        print("###### Q{} {}/{} = {}, {}/{}".format(self.id, correct, total_items, percentage, points, self.grade))
+        return points, self.grade
 
 
 #  <HINT> Create a Choice Model with:
@@ -122,7 +165,23 @@ class Enrollment(models.Model):
     # Choice content
     # Indicate if this choice of the question is a correct one or not
     # Other fields and methods you would like to design
-# class Choice(models.Model):
+class Choice(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    choice_text = models.CharField(
+        max_length=256,
+        null=False,
+        blank=False,
+        default="Choice *"
+    )
+    is_correct = models.BooleanField(null=False, blank=False, default=False)
+
+    def __str__(self):
+        return "choice_text: {0}, Question: {2}, is_correct: {1}".format(
+            self.choice_text,
+            self.is_correct,
+            self.question.question_text,
+        )
+
 
 # <HINT> The submission model
 # One enrollment could have multiple submission
@@ -130,5 +189,10 @@ class Enrollment(models.Model):
 # One choice could belong to multiple submissions
 #class Submission(models.Model):
 #    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
-#    choices = models.ManyToManyField(Choice)
+#    chocies = models.ManyToManyField(Choice)
 #    Other fields and methods you would like to design
+class Submission(models.Model):
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
+    choices = models.ManyToManyField(Choice)
+    def __str__(self):
+        return "Enrollment: {}, Choices: {}".format(self.enrollment.mode, len(self.choices))
